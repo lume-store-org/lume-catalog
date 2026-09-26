@@ -2,214 +2,212 @@ from flask import jsonify, request
 
 from database import get_db_connection
 
-CAMPOS = 'id, nome, descricao, preco, estoque, categoria, imagem, destaque'
+FIELDS = 'id, name, description, price, stock, category, image, featured'
 
 
-def row_to_item(row):
+def row_to_product(row):
     return {
         'id': row[0],
-        'nome': row[1],
-        'descricao': row[2],
-        'preco': float(row[3]),
-        'estoque': row[4],
-        'categoria': row[5],
-        'imagem': row[6],
-        'destaque': bool(row[7]),
+        'name': row[1],
+        'description': row[2],
+        'price': float(row[3]),
+        'stock': row[4],
+        'category': row[5],
+        'image': row[6],
+        'featured': bool(row[7]),
     }
 
 
 def is_admin():
-    """Papel do usuário, repassado pelo API Gateway."""
-    return request.headers.get('X-Usuario-Admin') == '1'
+    """User role, forwarded by the API Gateway."""
+    return request.headers.get('X-User-Admin') == '1'
 
 
-def buscar_item(cur, id):
-    cur.execute(f'SELECT {CAMPOS} FROM itens WHERE id = %s', (id,))
+def find_product(cur, product_id):
+    cur.execute(f'SELECT {FIELDS} FROM products WHERE id = %s', (product_id,))
     row = cur.fetchone()
-    return row_to_item(row) if row else None
+    return row_to_product(row) if row else None
 
 
-def dados_do_item(dados, atual=None):
-    atual = atual or {}
-    campos = {}
-    for campo in ('nome', 'descricao', 'categoria', 'imagem'):
-        campos[campo] = dados.get(campo, atual.get(campo))
-    campos['preco'] = dados.get('preco', atual.get('preco'))
-    campos['estoque'] = dados.get('estoque', atual.get('estoque', 0))
-    campos['destaque'] = bool(dados.get('destaque', atual.get('destaque', False)))
+def product_fields(data, current=None):
+    current = current or {}
+    fields = {key: data.get(key, current.get(key)) for key in ('name', 'description', 'category', 'image')}
+    fields['price'] = data.get('price', current.get('price'))
+    fields['stock'] = data.get('stock', current.get('stock', 0))
+    fields['featured'] = bool(data.get('featured', current.get('featured', False)))
 
-    if not campos['nome'] or campos['preco'] is None:
-        return None, "Nome e preço são obrigatórios"
+    if not fields['name'] or fields['price'] is None:
+        return None, 'Nome e preço são obrigatórios'
     try:
-        campos['preco'] = float(campos['preco'])
-        campos['estoque'] = int(campos['estoque'])
+        fields['price'] = float(fields['price'])
+        fields['stock'] = int(fields['stock'])
     except (TypeError, ValueError):
-        return None, "Preço e estoque devem ser numéricos"
-    if campos['preco'] <= 0 or campos['estoque'] < 0:
-        return None, "Preço deve ser positivo e estoque não pode ser negativo"
-    return campos, None
+        return None, 'Preço e estoque devem ser numéricos'
+    if fields['price'] <= 0 or fields['stock'] < 0:
+        return None, 'Preço deve ser positivo e estoque não pode ser negativo'
+    return fields, None
 
 
 def register_routes(app):
-    @app.route('/itens', methods=['GET'])
-    def listar_itens():
-        filtros, params = [], []
-        if request.args.get('categoria'):
-            filtros.append('categoria = %s')
-            params.append(request.args['categoria'])
-        if request.args.get('busca'):
-            filtros.append('(nome LIKE %s OR descricao LIKE %s)')
-            params += [f"%{request.args['busca']}%"] * 2
-        if request.args.get('destaque') == 'true':
-            filtros.append('destaque = TRUE')
-        where = f"WHERE {' AND '.join(filtros)}" if filtros else ''
+    @app.route('/products', methods=['GET'])
+    def list_products():
+        filters, params = [], []
+        if request.args.get('category'):
+            filters.append('category = %s')
+            params.append(request.args['category'])
+        if request.args.get('search'):
+            filters.append('(name LIKE %s OR description LIKE %s)')
+            params += [f"%{request.args['search']}%"] * 2
+        if request.args.get('featured') == 'true':
+            filters.append('featured = TRUE')
+        where = f"WHERE {' AND '.join(filters)}" if filters else ''
 
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute(f'SELECT {CAMPOS} FROM itens {where} ORDER BY destaque DESC, nome', params)
-        itens = [row_to_item(r) for r in cur.fetchall()]
+        cur.execute(f'SELECT {FIELDS} FROM products {where} ORDER BY featured DESC, name', params)
+        products = [row_to_product(r) for r in cur.fetchall()]
         cur.close()
         conn.close()
-        return jsonify({"itens": itens})
+        return jsonify({'products': products})
 
-    @app.route('/itens/categorias', methods=['GET'])
-    def listar_categorias():
+    @app.route('/products/categories', methods=['GET'])
+    def list_categories():
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute('SELECT categoria, COUNT(*) FROM itens WHERE categoria IS NOT NULL GROUP BY categoria ORDER BY categoria')
-        categorias = [{'nome': r[0], 'total': r[1]} for r in cur.fetchall()]
+        cur.execute('SELECT category, COUNT(*) FROM products WHERE category IS NOT NULL GROUP BY category ORDER BY category')
+        categories = [{'name': r[0], 'total': r[1]} for r in cur.fetchall()]
         cur.close()
         conn.close()
-        return jsonify({"categorias": categorias})
+        return jsonify({'categories': categories})
 
-    @app.route('/itens/<int:id>', methods=['GET'])
-    def obter_item(id):
+    @app.route('/products/<int:product_id>', methods=['GET'])
+    def get_product(product_id):
         conn = get_db_connection()
         cur = conn.cursor()
-        item = buscar_item(cur, id)
+        product = find_product(cur, product_id)
         cur.close()
         conn.close()
-        if item is None:
-            return jsonify({"erro": "Item não encontrado"}), 404
-        return jsonify(item)
+        if product is None:
+            return jsonify({'error': 'Produto não encontrado'}), 404
+        return jsonify(product)
 
-    @app.route('/itens', methods=['POST'])
-    def adicionar_item():
+    @app.route('/products', methods=['POST'])
+    def create_product():
         if not is_admin():
-            return jsonify({"erro": "Apenas administradores"}), 403
-        campos, erro = dados_do_item(request.get_json(silent=True) or {})
-        if erro:
-            return jsonify({"erro": erro}), 400
+            return jsonify({'error': 'Apenas administradores'}), 403
+        fields, error = product_fields(request.get_json(silent=True) or {})
+        if error:
+            return jsonify({'error': error}), 400
 
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            'INSERT INTO itens (nome, descricao, preco, estoque, categoria, imagem, destaque) '
-            'VALUES (%(nome)s, %(descricao)s, %(preco)s, %(estoque)s, %(categoria)s, %(imagem)s, %(destaque)s)',
-            campos,
+            'INSERT INTO products (name, description, price, stock, category, image, featured) '
+            'VALUES (%(name)s, %(description)s, %(price)s, %(stock)s, %(category)s, %(image)s, %(featured)s)',
+            fields,
         )
         conn.commit()
-        item = buscar_item(cur, cur.lastrowid)
+        product = find_product(cur, cur.lastrowid)
         cur.close()
         conn.close()
-        return jsonify(item), 201
+        return jsonify(product), 201
 
-    @app.route('/itens/<int:id>', methods=['PUT'])
-    def atualizar_item(id):
+    @app.route('/products/<int:product_id>', methods=['PUT'])
+    def update_product(product_id):
         if not is_admin():
-            return jsonify({"erro": "Apenas administradores"}), 403
+            return jsonify({'error': 'Apenas administradores'}), 403
         conn = get_db_connection()
         cur = conn.cursor()
         try:
-            atual = buscar_item(cur, id)
-            if atual is None:
-                return jsonify({"erro": "Item não encontrado"}), 404
-            campos, erro = dados_do_item(request.get_json(silent=True) or {}, atual)
-            if erro:
-                return jsonify({"erro": erro}), 400
+            current = find_product(cur, product_id)
+            if current is None:
+                return jsonify({'error': 'Produto não encontrado'}), 404
+            fields, error = product_fields(request.get_json(silent=True) or {}, current)
+            if error:
+                return jsonify({'error': error}), 400
             cur.execute(
-                'UPDATE itens SET nome = %(nome)s, descricao = %(descricao)s, preco = %(preco)s, estoque = %(estoque)s, '
-                'categoria = %(categoria)s, imagem = %(imagem)s, destaque = %(destaque)s WHERE id = %(id)s',
-                {**campos, 'id': id},
+                'UPDATE products SET name = %(name)s, description = %(description)s, price = %(price)s, stock = %(stock)s, '
+                'category = %(category)s, image = %(image)s, featured = %(featured)s WHERE id = %(id)s',
+                {**fields, 'id': product_id},
             )
             conn.commit()
-            return jsonify(buscar_item(cur, id))
+            return jsonify(find_product(cur, product_id))
         finally:
             cur.close()
             conn.close()
 
-    @app.route('/itens/<int:id>', methods=['DELETE'])
-    def remover_item(id):
+    @app.route('/products/<int:product_id>', methods=['DELETE'])
+    def delete_product(product_id):
         if not is_admin():
-            return jsonify({"erro": "Apenas administradores"}), 403
+            return jsonify({'error': 'Apenas administradores'}), 403
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute('DELETE FROM itens WHERE id = %s', (id,))
+        cur.execute('DELETE FROM products WHERE id = %s', (product_id,))
         conn.commit()
-        removidos = cur.rowcount
+        deleted = cur.rowcount
         cur.close()
         conn.close()
-        if removidos == 0:
-            return jsonify({"erro": "Item não encontrado"}), 404
-        return jsonify({"mensagem": f"Item {id} removido com sucesso"})
+        if deleted == 0:
+            return jsonify({'error': 'Produto não encontrado'}), 404
+        return jsonify({'message': f'Produto {product_id} removido'})
 
-    # Rotas internas (fora de /itens, então o API Gateway não as expõe):
-    # o serviço de pedidos reserva e devolve estoque numa única transação.
-    @app.route('/interno/estoque/reservar', methods=['POST'])
-    def reservar_estoque():
-        pedido = (request.get_json(silent=True) or {}).get('itens', [])
-        if not pedido:
-            return jsonify({"erro": "Nenhum item informado"}), 400
+    # Internal routes (outside /products, so the API Gateway does not expose them):
+    # the orders service reserves and releases stock in a single transaction.
+    @app.route('/internal/stock/reserve', methods=['POST'])
+    def reserve_stock():
+        lines = (request.get_json(silent=True) or {}).get('items', [])
+        if not lines:
+            return jsonify({'error': 'Nenhum produto informado'}), 400
 
         conn = get_db_connection()
         cur = conn.cursor()
         try:
-            reservados = []
-            for linha in pedido:
-                item_id, quantidade = int(linha['item_id']), int(linha['quantidade'])
-                if quantidade <= 0:
-                    raise ValueError(f"Quantidade inválida para o item {item_id}")
+            reserved = []
+            for line in lines:
+                product_id, quantity = int(line['product_id']), int(line['quantity'])
+                if quantity <= 0:
+                    raise ValueError(f'Quantidade inválida para o produto {product_id}')
                 cur.execute(
-                    'UPDATE itens SET estoque = estoque - %s WHERE id = %s AND estoque >= %s',
-                    (quantidade, item_id, quantidade),
+                    'UPDATE products SET stock = stock - %s WHERE id = %s AND stock >= %s',
+                    (quantity, product_id, quantity),
                 )
                 if cur.rowcount == 0:
-                    item = buscar_item(cur, item_id)
-                    motivo = "não encontrado" if item is None else f"sem estoque suficiente (disponível: {item['estoque']})"
-                    raise ValueError(f"Item {item_id} {motivo}")
-                item = buscar_item(cur, item_id)
-                reservados.append({
-                    'item_id': item_id,
-                    'nome': item['nome'],
-                    'imagem': item['imagem'],
-                    'quantidade': quantidade,
-                    'preco_unitario': item['preco'],
+                    product = find_product(cur, product_id)
+                    reason = 'não encontrado' if product is None else f"sem estoque suficiente (disponível: {product['stock']})"
+                    raise ValueError(f'Produto {product_id} {reason}')
+                product = find_product(cur, product_id)
+                reserved.append({
+                    'product_id': product_id,
+                    'name': product['name'],
+                    'image': product['image'],
+                    'quantity': quantity,
+                    'unit_price': product['price'],
                 })
             conn.commit()
-            return jsonify({"itens": reservados})
+            return jsonify({'items': reserved})
         except (KeyError, TypeError, ValueError) as e:
             conn.rollback()
-            return jsonify({"erro": str(e) if isinstance(e, ValueError) else "Itens inválidos"}), 409
+            return jsonify({'error': str(e) if isinstance(e, ValueError) else 'Itens inválidos'}), 409
         finally:
             cur.close()
             conn.close()
 
-    @app.route('/interno/estoque/devolver', methods=['POST'])
-    def devolver_estoque():
+    @app.route('/internal/stock/release', methods=['POST'])
+    def release_stock():
         conn = get_db_connection()
         cur = conn.cursor()
-        for linha in (request.get_json(silent=True) or {}).get('itens', []):
-            cur.execute('UPDATE itens SET estoque = estoque + %s WHERE id = %s', (int(linha['quantidade']), int(linha['item_id'])))
+        for line in (request.get_json(silent=True) or {}).get('items', []):
+            cur.execute('UPDATE products SET stock = stock + %s WHERE id = %s', (int(line['quantity']), int(line['product_id'])))
         conn.commit()
         cur.close()
         conn.close()
-        return jsonify({"mensagem": "Estoque devolvido"})
+        return jsonify({'message': 'Estoque devolvido'})
 
     @app.route('/health', methods=['GET'])
     def health():
         try:
             conn = get_db_connection()
             conn.close()
-            return jsonify({"status": "ok", "database": "connected"}), 200
+            return jsonify({'status': 'ok', 'database': 'connected'}), 200
         except Exception:
-            return jsonify({"status": "erro", "database": "disconnected"}), 500
+            return jsonify({'status': 'error', 'database': 'disconnected'}), 500
