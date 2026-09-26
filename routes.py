@@ -6,7 +6,7 @@ def register_routes(app):
     def listar_itens():
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute('SELECT id, nome, descricao, preco, estoque, categoria FROM itens')
+        cur.execute('SELECT id, nome, descricao, preco, estoque, categoria, imagem FROM itens')
         rows = cur.fetchall()
         
         itens = []
@@ -17,7 +17,8 @@ def register_routes(app):
                 'descricao': row[2],
                 'preco': float(row[3]),
                 'estoque': row[4],
-                'categoria': row[5]
+                'categoria': row[5],
+                'imagem': row[6]
             }
             itens.append(item)
             
@@ -30,7 +31,7 @@ def register_routes(app):
     def obter_item(id):
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute('SELECT id, nome, descricao, preco, estoque, categoria FROM itens WHERE id = %s', (id,))
+        cur.execute('SELECT id, nome, descricao, preco, estoque, categoria, imagem FROM itens WHERE id = %s', (id,))
         row = cur.fetchone()
         
         if row is None:
@@ -44,7 +45,8 @@ def register_routes(app):
             'descricao': row[2],
             'preco': float(row[3]),
             'estoque': row[4],
-            'categoria': row[5]
+            'categoria': row[5],
+            'imagem': row[6]
         }
         
         cur.close()
@@ -60,19 +62,20 @@ def register_routes(app):
         preco = novo_item.get('preco')
         estoque = novo_item.get('estoque', 0)
         categoria = novo_item.get('categoria')
+        imagem = novo_item.get('imagem')
         
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            'INSERT INTO itens (nome, descricao, preco, estoque, categoria) VALUES (%s, %s, %s, %s, %s)',
-            (nome, descricao, preco, estoque, categoria)
+            'INSERT INTO itens (nome, descricao, preco, estoque, categoria, imagem) VALUES (%s, %s, %s, %s, %s, %s)',
+            (nome, descricao, preco, estoque, categoria, imagem)
         )
         # Obter o ID do item inserido usando lastrowid (método do MySQL)
         id = cur.lastrowid
         conn.commit()
         
         # Recuperar o item completo
-        cur.execute('SELECT id, nome, descricao, preco, estoque, categoria FROM itens WHERE id = %s', (id,))
+        cur.execute('SELECT id, nome, descricao, preco, estoque, categoria, imagem FROM itens WHERE id = %s', (id,))
         row = cur.fetchone()
         
         item = {
@@ -81,7 +84,8 @@ def register_routes(app):
             'descricao': row[2],
             'preco': float(row[3]),
             'estoque': row[4],
-            'categoria': row[5]
+            'categoria': row[5],
+            'imagem': row[6]
         }
         
         cur.close()
@@ -97,6 +101,7 @@ def register_routes(app):
         preco = item_atualizado.get('preco')
         estoque = item_atualizado.get('estoque')
         categoria = item_atualizado.get('categoria')
+        imagem = item_atualizado.get('imagem')
         
         conn = get_db_connection()
         cur = conn.cursor()
@@ -110,13 +115,13 @@ def register_routes(app):
             
         # Atualizar o item
         cur.execute(
-            'UPDATE itens SET nome = %s, descricao = %s, preco = %s, estoque = %s, categoria = %s WHERE id = %s',
-            (nome, descricao, preco, estoque, categoria, id)
+            'UPDATE itens SET nome = %s, descricao = %s, preco = %s, estoque = %s, categoria = %s, imagem = %s WHERE id = %s',
+            (nome, descricao, preco, estoque, categoria, imagem, id)
         )
         conn.commit()
         
         # Recuperar o item atualizado
-        cur.execute('SELECT id, nome, descricao, preco, estoque, categoria FROM itens WHERE id = %s', (id,))
+        cur.execute('SELECT id, nome, descricao, preco, estoque, categoria, imagem FROM itens WHERE id = %s', (id,))
         row = cur.fetchone()
         
         item = {
@@ -125,7 +130,8 @@ def register_routes(app):
             'descricao': row[2],
             'preco': float(row[3]),
             'estoque': row[4],
-            'categoria': row[5]
+            'categoria': row[5],
+            'imagem': row[6]
         }
         
         cur.close()

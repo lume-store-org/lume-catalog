@@ -6,12 +6,13 @@ SET NAMES utf8mb4;
 SET CHARACTER SET utf8mb4;
 
 CREATE TABLE IF NOT EXISTS itens (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
     descricao TEXT,
     preco DECIMAL(10, 2) NOT NULL,
-    estoque INT NOT NULL DEFAULT 0,
-    categoria VARCHAR(50)
+    estoque INTEGER DEFAULT 0,
+    categoria VARCHAR(100),
+    imagem TEXT
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Inserir dados iniciais para testes
