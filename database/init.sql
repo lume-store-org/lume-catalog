@@ -1,19 +1,19 @@
 SET NAMES utf8mb4;
 
-CREATE TABLE IF NOT EXISTS itens (
+CREATE TABLE IF NOT EXISTS products (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(255) NOT NULL,
-    descricao TEXT,
-    preco DECIMAL(10, 2) NOT NULL,
-    estoque INT NOT NULL DEFAULT 0,
-    categoria VARCHAR(100),
-    imagem TEXT,
-    destaque BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT estoque_nao_negativo CHECK (estoque >= 0)
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    stock INT NOT NULL DEFAULT 0,
+    category VARCHAR(100),
+    image TEXT,
+    featured BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT stock_not_negative CHECK (stock >= 0)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- Catálogo de exemplo (fotos do Unsplash, servidas pelo front em /produtos)
-INSERT INTO itens (nome, descricao, preco, estoque, categoria, imagem, destaque) VALUES
+-- Sample catalog (Unsplash photos, served by the front at /produtos)
+INSERT INTO products (name, description, price, stock, category, image, featured) VALUES
     ('Smartphone Pro 128 GB', 'Tela OLED de 6,1", câmera dupla de 48 MP e bateria para o dia inteiro.', 4999.90, 25, 'Eletrônicos', '/produtos/smartphone.jpg', TRUE),
     ('Notebook Ultrafino 14"', 'Processador de 8 núcleos, 16 GB de RAM, SSD de 512 GB e só 1,2 kg.', 3899.99, 15, 'Informática', '/produtos/notebook-ultrafino.jpg', TRUE),
     ('Notebook Pro 16"', 'Tela de alta resolução, 32 GB de RAM e SSD de 1 TB para quem cria conteúdo.', 12499.00, 6, 'Informática', '/produtos/notebook-pro.jpg', FALSE),
