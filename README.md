@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="docs/logo.svg" alt="Lume Store" width="240" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg" />
+    <img src="docs/logo.svg" alt="Lume Store" width="240" />
+  </picture>
 </p>
 
 <h1 align="center">
@@ -7,7 +10,7 @@
 </h1>
 
 <p align="center">
-  <img src="docs/arch.gif" alt="Arquitetura da Lume Store com o microserviço de catálogo" />
+  <img src="docs/api-demo.gif" alt="Rotas do catálogo no Swagger: busca de produtos, categorias e detalhe" />
 </p>
 
 <p align="center">
@@ -21,6 +24,12 @@
 Microserviço de **catálogo** da Lume Store: produtos, categorias e **estoque**. A leitura é pública; criar, editar e remover produtos é só para administradores. É também quem **reserva e devolve estoque** para o serviço de pedidos, sempre numa transação, e quem define o **preço oficial** de cada item vendido.
 
 Tem o próprio banco MySQL (`catalog_db`) e só é acessível pela rede interna, via [lume-gateway](https://github.com/lume-store-org/lume-gateway).
+
+## Arquitetura
+
+<p align="center">
+  <img src="docs/arch.gif" alt="Arquitetura do lume-catalog: chamado pelo gateway e pelo lume-orders, com o banco catalog_db" />
+</p>
 
 ## O que foi construído
 
